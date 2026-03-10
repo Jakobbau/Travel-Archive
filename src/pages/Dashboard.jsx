@@ -14,20 +14,50 @@ export default function Dashboard({ session }) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [newTrip, setNewTrip] = useState({ title: "", destination: "", start_date: "", end_date: "", emoji: "✈️" })
   const [loading, setLoading] = useState(false)
+  const [joinCode, setJoinCode] = useState("")
+  const [joinMessage, setJoinMessage] = useState("")
+  const [joinLoading, setJoinLoading] = useState(false)
 
   useEffect(() => { fetchTrips() }, [])
 
   const fetchTrips = async () => {
-    const { data } = await supabase.from("trips").select("*").order("created_at", { ascending: false })
-    if (data) setTrips(data)
+    const { data: ownTrips } = await supabase.from("trips").select("*").eq("created_by", session.user.id)
+    const { data: memberTrips } = await supabase.from("trip_members").select("*, trips(*)").eq("user_id", session.user.id)
+    const joined = memberTrips ? memberTrips.map(m => m.trips).filter(Boolean) : []
+    const all = [...(ownTrips || []), ...joined]
+    const unique = all.filter((t, i, self) => self.findIndex(x => x.id === t.id) === i)
+    setTrips(unique.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)))
   }
 
   const createTrip = async () => {
     if (!newTrip.title) return
     setLoading(true)
-    const { error } = await supabase.from("trips").insert([{ ...newTrip, created_by: session.user.id }])
-    if (!error) { fetchTrips(); setShowNewTrip(false); setNewTrip({ title: "", destination: "", start_date: "", end_date: "", emoji: "✈️" }) }
+    const invite_code = Math.random().toString(36).substring(2, 8).toUpperCase()
+    const { data, error } = await supabase.from("trips").insert([{
+      ...newTrip, created_by: session.user.id, invite_code, is_shared: true
+    }]).select().single()
+    if (!error && data) {
+      await supabase.from("trip_members").insert([{ trip_id: data.id, user_id: session.user.id, role: "admin" }])
+      fetchTrips()
+      setShowNewTrip(false)
+      setNewTrip({ title: "", destination: "", start_date: "", end_date: "", emoji: "✈️" })
+    }
     setLoading(false)
+  }
+
+  const joinTrip = async () => {
+    if (!joinCode) return
+    setJoinLoading(true)
+    setJoinMessage("")
+    const { data, error } = await supabase.from("trips").select("*").eq("invite_code", joinCode.toUpperCase()).single()
+    if (error || !data) {
+      setJoinMessage("❌ Ungültiger Einladungscode!")
+    } else {
+      const { error: joinError } = await supabase.from("trip_members").insert([{ trip_id: data.id, user_id: session.user.id, role: "member" }])
+      if (joinError) setJoinMessage("❌ Du bist bereits dabei!")
+      else { setJoinMessage("✅ Erfolgreich beigetreten!"); fetchTrips(); setJoinCode("") }
+    }
+    setJoinLoading(false)
   }
 
   return (
@@ -67,16 +97,43 @@ export default function Dashboard({ session }) {
         </div>
       </div>
 
-      {/* Neue Reise Button */}
-      <button className="btn-add" onClick={() => setShowNewTrip(true)}>
-        <span style={{fontSize:20}}>+</span>
-        <span>Neue Reise hinzufügen</span>
-      </button>
+      {/* Aktionen */}
+      <div style={{display:"flex", gap:12, marginBottom:24, flexWrap:"wrap"}}>
+        <button className="btn-add" style={{flex:1, minWidth:200, marginBottom:0}} onClick={() => setShowNewTrip(!showNewTrip)}>
+          <span style={{fontSize:20}}>+</span>
+          <span>Neue Reise erstellen</span>
+        </button>
+        <div style={{flex:1, minWidth:200, display:"flex", gap:8}}>
+          <input
+            placeholder="Einladungscode eingeben..."
+            value={joinCode}
+            onChange={e => setJoinCode(e.target.value)}
+            style={{
+              flex:1, padding:"13px 16px", borderRadius:10,
+              background:"rgba(255,255,255,0.05)",
+              border:"1px solid var(--border)",
+              color:"white", fontSize:14, outline:"none"
+            }}
+          />
+          <button className="btn-secondary" onClick={joinTrip} disabled={joinLoading}>
+            {joinLoading ? "..." : "Beitreten"}
+          </button>
+        </div>
+      </div>
+
+      {joinMessage && (
+        <div style={{
+          padding:"12px 16px", borderRadius:10, marginBottom:16,
+          background: joinMessage.includes("✅") ? "rgba(5,150,105,0.15)" : "rgba(239,68,68,0.15)",
+          border: `1px solid ${joinMessage.includes("✅") ? "rgba(5,150,105,0.3)" : "rgba(239,68,68,0.3)"}`,
+          color:"white", fontSize:14
+        }}>{joinMessage}</div>
+      )}
 
       {/* Formular */}
       {showNewTrip && (
         <div className="form-card">
-          <h3>🗺️ Neue Reise erstellen</h3>
+          <h3>✈️ Neue Reise erstellen</h3>
           <div style={{marginBottom:16}}>
             <div className="date-label" style={{marginBottom:8}}>Reise-Emoji wählen</div>
             <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} style={{
@@ -115,7 +172,7 @@ export default function Dashboard({ session }) {
           </div>
           <div className="btn-row">
             <button className="btn-primary" onClick={createTrip} disabled={loading}>
-              {loading ? "Wird gespeichert..." : "Reise erstellen ✈️"}
+              {loading ? "Wird erstellt..." : "Reise erstellen ✈️"}
             </button>
             <button className="btn-secondary" onClick={() => setShowNewTrip(false)}>Abbrechen</button>
           </div>
@@ -127,19 +184,31 @@ export default function Dashboard({ session }) {
         <div className="empty">
           <div className="empty-icon">🗺️</div>
           <h3>Noch keine Reisen</h3>
-          <p>Füge deine erste Reise hinzu und beginne dein Archiv!</p>
+          <p>Erstelle eine Reise oder tritt einer mit einem Einladungscode bei!</p>
         </div>
       ) : (
         trips.map(trip => (
           <div key={trip.id} className="trip-card">
             <div>
-              <div className="trip-badge">Reise</div>
+              <div className="trip-badge">{trip.created_by === session.user.id ? "Meine Reise" : "Eingeladen"}</div>
               <div className="trip-title">{trip.title}</div>
               {trip.destination && <div className="trip-dest">📍 {trip.destination}</div>}
               {trip.start_date && (
                 <div className="trip-date">
                   📅 {new Date(trip.start_date).toLocaleDateString("de-DE", {day:"2-digit", month:"short", year:"numeric"})}
                   {trip.end_date && ` → ${new Date(trip.end_date).toLocaleDateString("de-DE", {day:"2-digit", month:"short", year:"numeric"})}`}
+                </div>
+              )}
+              {trip.invite_code && trip.created_by === session.user.id && (
+                <div style={{
+                  display:"inline-flex", alignItems:"center", gap:6, marginTop:8,
+                  padding:"4px 12px", background:"rgba(8,145,178,0.1)",
+                  border:"1px solid rgba(8,145,178,0.2)", borderRadius:20
+                }}>
+                  <span style={{color:"var(--text-soft)", fontSize:12}}>Code:</span>
+                  <span style={{color:"var(--teal-light)", fontSize:13, fontWeight:700, letterSpacing:2}}>
+                    {trip.invite_code}
+                  </span>
                 </div>
               )}
             </div>

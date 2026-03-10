@@ -3,6 +3,7 @@ import { supabase } from "./lib/supabase"
 import Auth from "./pages/Auth"
 import Dashboard from "./pages/Dashboard"
 import Profile from "./pages/Profile"
+import Groups from "./pages/Groups"
 import Sidebar from "./components/Sidebar"
 
 function App() {
@@ -36,9 +37,10 @@ function App() {
 
   const renderPage = () => {
     switch(currentPage) {
-      case "dashboard": return <Dashboard session={session} setCurrentPage={setCurrentPage} />
-      case "trips": return <Dashboard session={session} setCurrentPage={setCurrentPage} />
+      case "dashboard": return <Dashboard session={session} />
+      case "trips": return <Dashboard session={session} />
       case "profile": return <Profile session={session} />
+      case "groups": return <Groups session={session} />
       default: return (
         <div className="main" style={{textAlign:"center", paddingTop:80}}>
           <div style={{fontSize:64, marginBottom:16}}>🚧</div>
