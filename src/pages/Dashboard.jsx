@@ -26,7 +26,7 @@ export default function Dashboard({ session }) {
     <div>
       <div className="header">
         <div className="header-left">
-          <span style={{fontSize: 28}}>🌍</span>
+          <img src="/logo.png" style={{height: 40, width: 40, borderRadius: 8}} />
           <h1>Travel Archive</h1>
         </div>
         <div style={{display:"flex", alignItems:"center", gap:12}}>

@@ -23,40 +23,117 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)"}}>
-      <div className="bg-white bg-opacity-10 backdrop-blur-md rounded-2xl p-8 w-full max-w-md mx-4 border border-white border-opacity-20">
-        <div className="text-center mb-8">
-          <div className="text-6xl mb-4">🌍</div>
-          <h1 className="text-3xl font-bold text-white">Travel Archive</h1>
-          <p className="text-blue-200 mt-2">Deine Reiseerinnerungen</p>
+    <div style={{
+      minHeight: "100vh",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      background: "linear-gradient(160deg, #0a0a0a 0%, #1a1a1a 50%, #0d0d0d 100%)",
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+    }}>
+      {/* Hintergrund Effekt */}
+      <div style={{
+        position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+        background: "radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.05) 0%, transparent 70%)",
+        pointerEvents: "none"
+      }} />
+
+      <div style={{
+        width: "100%", maxWidth: 420, margin: "0 16px",
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.1)",
+        borderRadius: 24, padding: "48px 40px",
+        backdropFilter: "blur(20px)",
+        boxShadow: "0 25px 60px rgba(0,0,0,0.5)"
+      }}>
+        {/* Logo */}
+        <div style={{textAlign: "center", marginBottom: 32}}>
+          <img src="/logo.png" style={{
+            height: 100, width: 100, borderRadius: 20,
+            margin: "0 auto 20px", display: "block",
+            filter: "drop-shadow(0 4px 20px rgba(255,255,255,0.15))"
+          }} />
+          <h1 style={{
+            color: "white", fontSize: 28, fontWeight: 700,
+            margin: 0, letterSpacing: "-0.5px"
+          }}>Travel Archive</h1>
+          <p style={{color: "rgba(255,255,255,0.4)", marginTop: 8, fontSize: 14}}>
+            Deine Reiseerinnerungen für immer
+          </p>
         </div>
-        <div className="space-y-4">
+
+        {/* Tabs */}
+        <div style={{
+          display: "flex", background: "rgba(255,255,255,0.06)",
+          borderRadius: 12, padding: 4, marginBottom: 28
+        }}>
+          <button onClick={() => setIsLogin(true)} style={{
+            flex: 1, padding: "10px", border: "none", borderRadius: 10, cursor: "pointer",
+            background: isLogin ? "rgba(255,255,255,0.12)" : "transparent",
+            color: isLogin ? "white" : "rgba(255,255,255,0.4)",
+            fontWeight: isLogin ? 600 : 400, fontSize: 14, transition: "all 0.2s"
+          }}>Anmelden</button>
+          <button onClick={() => setIsLogin(false)} style={{
+            flex: 1, padding: "10px", border: "none", borderRadius: 10, cursor: "pointer",
+            background: !isLogin ? "rgba(255,255,255,0.12)" : "transparent",
+            color: !isLogin ? "white" : "rgba(255,255,255,0.4)",
+            fontWeight: !isLogin ? 600 : 400, fontSize: 14, transition: "all 0.2s"
+          }}>Registrieren</button>
+        </div>
+
+        {/* Felder */}
+        <div style={{display: "flex", flexDirection: "column", gap: 12}}>
           <input
             type="email"
-            placeholder="Email"
+            placeholder="Email Adresse"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-white bg-opacity-10 border border-white border-opacity-20 text-white placeholder-blue-200 focus:outline-none focus:border-blue-400"
+            style={{
+              padding: "14px 16px", borderRadius: 12, fontSize: 15,
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              color: "white", outline: "none"
+            }}
           />
           <input
             type="password"
             placeholder="Passwort"
             value={password}
             onChange={e => setPassword(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-white bg-opacity-10 border border-white border-opacity-20 text-white placeholder-blue-200 focus:outline-none focus:border-blue-400"
+            onKeyDown={e => e.key === "Enter" && handleAuth()}
+            style={{
+              padding: "14px 16px", borderRadius: 12, fontSize: 15,
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              color: "white", outline: "none"
+            }}
           />
-          {message && <p className="text-yellow-300 text-sm text-center">{message}</p>}
+
+          {message && (
+            <p style={{color: "#fbbf24", fontSize: 13, textAlign: "center", margin: 0}}>{message}</p>
+          )}
+
           <button
             onClick={handleAuth}
             disabled={loading}
-            className="w-full py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-semibold transition-all"
+            style={{
+              padding: "14px", borderRadius: 12, border: "none", cursor: "pointer",
+              background: "linear-gradient(135deg, #ffffff 0%, #d4d4d4 100%)",
+              color: "#0a0a0a", fontWeight: 700, fontSize: 16,
+              marginTop: 4, transition: "all 0.2s",
+              boxShadow: "0 4px 20px rgba(255,255,255,0.15)"
+            }}
           >
-            {loading ? "..." : isLogin ? "Anmelden" : "Registrieren"}
+            {loading ? "..." : isLogin ? "Anmelden →" : "Konto erstellen →"}
           </button>
-          <p className="text-center text-blue-200 text-sm cursor-pointer hover:text-white" onClick={() => setIsLogin(!isLogin)}>
-            {isLogin ? "Noch kein Konto? Registrieren" : "Schon ein Konto? Anmelden"}
-          </p>
         </div>
+
+        <p style={{
+          textAlign: "center", color: "rgba(255,255,255,0.25)",
+          fontSize: 12, marginTop: 28, marginBottom: 0
+        }}>
+          Deine Erinnerungen. Sicher gespeichert. ✈️
+        </p>
       </div>
     </div>
   )
