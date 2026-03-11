@@ -4,6 +4,7 @@ import Auth from "./pages/Auth"
 import Dashboard from "./pages/Dashboard"
 import Profile from "./pages/Profile"
 import TripDetail from "./pages/TripDetail"
+import WorldMap from "./pages/WorldMap"
 import Sidebar from "./components/Sidebar"
 
 function App() {
@@ -52,14 +53,10 @@ function App() {
         return <Dashboard session={session} onSelectTrip={navigateToTrip} />
       case "profile":
         return <Profile session={session} viewUserId={selectedProfile} onSelectTrip={navigateToTrip} />
+      case "map":
+        return <WorldMap session={session} onSelectTrip={navigateToTrip} />
       default:
-        return (
-          <div className="main" style={{textAlign:"center", paddingTop:80}}>
-            <div style={{fontSize:64, marginBottom:16}}>🚧</div>
-            <h2 style={{color:"white", marginBottom:8}}>Kommt bald!</h2>
-            <p style={{color:"var(--text-soft)"}}>Diese Seite wird gerade gebaut.</p>
-          </div>
-        )
+        return <WorldMap session={session} onSelectTrip={navigateToTrip} />
     }
   }
 
