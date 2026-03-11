@@ -8,11 +8,11 @@ const TRIP_EMOJIS = [
   "🍜", "🍷", "🎭", "🎪", "🎡", "🎠", "🌸", "❄️"
 ]
 
-export default function Dashboard({ session }) {
+export default function Dashboard({ session, onSelectTrip }) {
   const [trips, setTrips] = useState([])
   const [showNewTrip, setShowNewTrip] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-  const [newTrip, setNewTrip] = useState({ title: "", destination: "", start_date: "", end_date: "", emoji: "✈️" })
+  const [newTrip, setNewTrip] = useState({ title: "", destination: "", start_date: "", end_date: "", emoji: "✈️", no_end_date: false })
   const [loading, setLoading] = useState(false)
   const [joinCode, setJoinCode] = useState("")
   const [joinMessage, setJoinMessage] = useState("")
@@ -34,13 +34,20 @@ export default function Dashboard({ session }) {
     setLoading(true)
     const invite_code = Math.random().toString(36).substring(2, 8).toUpperCase()
     const { data, error } = await supabase.from("trips").insert([{
-      ...newTrip, created_by: session.user.id, invite_code, is_shared: true
+      title: newTrip.title,
+      destination: newTrip.destination,
+      emoji: newTrip.emoji,
+      start_date: newTrip.start_date || null,
+      end_date: newTrip.no_end_date ? null : (newTrip.end_date || null),
+      created_by: session.user.id,
+      invite_code,
+      is_shared: true
     }]).select().single()
     if (!error && data) {
       await supabase.from("trip_members").insert([{ trip_id: data.id, user_id: session.user.id, role: "admin" }])
       fetchTrips()
       setShowNewTrip(false)
-      setNewTrip({ title: "", destination: "", start_date: "", end_date: "", emoji: "✈️" })
+      setNewTrip({ title: "", destination: "", start_date: "", end_date: "", emoji: "✈️", no_end_date: false })
     }
     setLoading(false)
   }
@@ -59,6 +66,8 @@ export default function Dashboard({ session }) {
     }
     setJoinLoading(false)
   }
+
+  const formatDate = (date) => date ? new Date(date).toLocaleDateString("de-DE", {day:"2-digit", month:"short", year:"numeric"}) : null
 
   return (
     <div className="main">
@@ -160,17 +169,28 @@ export default function Dashboard({ session }) {
           </div>
           <input placeholder="Titel (z.B. Sommerurlaub Kroatien 2025)" value={newTrip.title} onChange={e => setNewTrip({...newTrip, title: e.target.value})} />
           <input placeholder="Reiseziel (z.B. Split, Kroatien)" value={newTrip.destination} onChange={e => setNewTrip({...newTrip, destination: e.target.value})} />
-          <div className="date-row">
-            <div style={{flex:1}}>
-              <div className="date-label">Startdatum</div>
-              <input type="date" value={newTrip.start_date} onChange={e => setNewTrip({...newTrip, start_date: e.target.value})} />
-            </div>
-            <div style={{flex:1}}>
-              <div className="date-label">Enddatum</div>
-              <input type="date" value={newTrip.end_date} onChange={e => setNewTrip({...newTrip, end_date: e.target.value})} />
-            </div>
+          <div className="date-label" style={{marginBottom:6}}>Startdatum</div>
+          <input type="date" value={newTrip.start_date} onChange={e => setNewTrip({...newTrip, start_date: e.target.value})} style={{marginBottom:12}} />
+
+          {/* Kein Enddatum Checkbox */}
+          <div style={{display:"flex", alignItems:"center", gap:10, marginBottom:12, padding:"10px 14px", background:"rgba(255,255,255,0.04)", borderRadius:10}}>
+            <input type="checkbox" id="noEndDate" checked={newTrip.no_end_date}
+              onChange={e => setNewTrip({...newTrip, no_end_date: e.target.checked, end_date: ""})}
+              style={{width:18, height:18, cursor:"pointer", accentColor:"var(--teal)"}}
+            />
+            <label htmlFor="noEndDate" style={{color:"var(--text-soft)", fontSize:14, cursor:"pointer"}}>
+              🔄 Enddatum noch offen (Reise läuft noch oder unklar)
+            </label>
           </div>
-          <div className="btn-row">
+
+          {!newTrip.no_end_date && (
+            <>
+              <div className="date-label" style={{marginBottom:6}}>Enddatum</div>
+              <input type="date" value={newTrip.end_date} onChange={e => setNewTrip({...newTrip, end_date: e.target.value})} />
+            </>
+          )}
+
+          <div className="btn-row" style={{marginTop:16}}>
             <button className="btn-primary" onClick={createTrip} disabled={loading}>
               {loading ? "Wird erstellt..." : "Reise erstellen ✈️"}
             </button>
@@ -188,17 +208,15 @@ export default function Dashboard({ session }) {
         </div>
       ) : (
         trips.map(trip => (
-          <div key={trip.id} className="trip-card">
+          <div key={trip.id} className="trip-card" onClick={() => onSelectTrip && onSelectTrip(trip)}>
             <div>
               <div className="trip-badge">{trip.created_by === session.user.id ? "Meine Reise" : "Eingeladen"}</div>
               <div className="trip-title">{trip.title}</div>
               {trip.destination && <div className="trip-dest">📍 {trip.destination}</div>}
-              {trip.start_date && (
-                <div className="trip-date">
-                  📅 {new Date(trip.start_date).toLocaleDateString("de-DE", {day:"2-digit", month:"short", year:"numeric"})}
-                  {trip.end_date && ` → ${new Date(trip.end_date).toLocaleDateString("de-DE", {day:"2-digit", month:"short", year:"numeric"})}`}
-                </div>
-              )}
+              <div className="trip-date">
+                {trip.start_date && `📅 ${formatDate(trip.start_date)}`}
+                {trip.start_date && (trip.end_date ? ` → ${formatDate(trip.end_date)}` : " → 🔄 Offen")}
+              </div>
               {trip.invite_code && trip.created_by === session.user.id && (
                 <div style={{
                   display:"inline-flex", alignItems:"center", gap:6, marginTop:8,
@@ -206,9 +224,7 @@ export default function Dashboard({ session }) {
                   border:"1px solid rgba(8,145,178,0.2)", borderRadius:20
                 }}>
                   <span style={{color:"var(--text-soft)", fontSize:12}}>Code:</span>
-                  <span style={{color:"var(--teal-light)", fontSize:13, fontWeight:700, letterSpacing:2}}>
-                    {trip.invite_code}
-                  </span>
+                  <span style={{color:"var(--teal-light)", fontSize:13, fontWeight:700, letterSpacing:2}}>{trip.invite_code}</span>
                 </div>
               )}
             </div>
